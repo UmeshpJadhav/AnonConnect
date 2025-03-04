@@ -5,12 +5,15 @@ import Header from './Header';
 interface Message {
   text: string;
   isSent: boolean;
+  tempId?: number;
+  status: 'pending' | 'delivered';
 }
 
 const ChatPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState<string>('');
   const [room, setRoom] = useState<string>('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isInCall, setIsInCall] = useState<boolean>(false);
   const [showIncomingCall, setShowIncomingCall] = useState<boolean>(false);
   const [showVideoBlock, setShowVideoBlock] = useState<boolean>(false);
@@ -30,21 +33,23 @@ const ChatPage: React.FC = () => {
 
   useEffect(() => {
     // Initialize socket connection
-    socket.current =io('http://localhost:3000', {
-                    withCredentials: true,
-                    transports: ['polling', 'websocket'] 
-                });
+    socket.current = io('http://localhost:3000', {
+        withCredentials: true,
+        transports: ['polling', 'websocket'] 
+    });
 
-    socket.current.emit("joinroom");
+    socket.current.emit("joinroom");  
     
     // Set up event listeners
     socket.current.on("joined", (roomname: string) => {
-      setRoom(roomname);
-      setNoOneHere(false);
+        document.querySelector(".noOneHere")?.classList.add("hidden");
+        setRoom(roomname);
+        setNoOneHere(false);
     });
-    
-    socket.current.on("message", (message: string) => {
-      receiveMessage(message);
+
+    socket.current.on("message", (message: string, tempId: number) => {
+      console.log("Received message:", message);
+      receiveMessage(message, tempId);
     });
     
     socket.current.on("incomingCall", () => {
@@ -62,12 +67,21 @@ const ChatPage: React.FC = () => {
     
     socket.current.on("signalingMessage", handleSignalingMessage);
     
+    // Add error listeners
+    socket.current.on("connect_error", (err) => {
+      console.log("Connection error:", err.message);
+    });
+
+    socket.current.on("disconnect", (reason) => {
+      console.log("Disconnected:", reason);
+    });
+    
     // Clean up on component unmount
     return () => {
-      if (socket.current) {
-        socket.current.disconnect();
-      }
-      hangup();
+        if (socket.current) {
+            socket.current.disconnect();
+        }
+        hangup();
     };
   }, []);
 
@@ -81,18 +95,44 @@ const ChatPage: React.FC = () => {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (messageText.trim() && socket.current && room) {
-      socket.current.emit("message", { room, message: messageText });
-      attachMessage(messageText);
+      // Create temporary message with pending state
+      const tempId = Date.now(); // Unique identifier for the message
+      setMessages(prev => [...prev, { 
+        text: messageText, 
+        isSent: true,
+        tempId, // Add temporary ID
+        status: 'pending' 
+      }]);
+      
+      socket.current.emit("message", { 
+        room: room, 
+        message: messageText,
+        tempId // Send the temp ID with the message
+      });
+
       setMessageText('');
+      
+      // Force scroll to bottom after state update
+      setTimeout(() => {
+        if (messageContainerRef.current) {
+          messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+        }
+      }, 0);
     }
   };
 
-  const attachMessage = (message: string) => {
-    setMessages(prev => [...prev, { text: message, isSent: true }]);
-  };
-
-  const receiveMessage = (message: string) => {
-    setMessages(prev => [...prev, { text: message, isSent: false }]);
+  const receiveMessage = (message: string, receivedTempId?: number) => {
+    setMessages(prev => {
+      // If we have a temp ID, replace the pending message
+      if (receivedTempId) {
+        return prev.map(msg => 
+          msg.tempId === receivedTempId 
+            ? { ...msg, status: 'delivered' } 
+            : msg
+        ).concat({ text: message, isSent: false });
+      }
+      return [...prev, { text: message, isSent: false }];
+    });
   };
 
   const startVideoCall = () => {
@@ -169,7 +209,7 @@ const ChatPage: React.FC = () => {
       
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate && socket.current && room) {
-          socket.current.emit("signalingMessage", {
+          socket.current?.emit("signalingMessage", {
             room,
             message: JSON.stringify({
               type: "candidate",
@@ -194,7 +234,7 @@ const ChatPage: React.FC = () => {
         await peerConnectionRef.current.setLocalDescription(offer);
         
         if (socket.current && room) {
-          socket.current.emit("signalingMessage", {
+          socket.current?.emit("signalingMessage", {
             room,
             message: JSON.stringify({
               type: "offer",
@@ -235,7 +275,7 @@ const ChatPage: React.FC = () => {
         await peerConnectionRef.current.setLocalDescription(answer);
         
         if (socket.current && room) {
-          socket.current.emit("signalingMessage", { 
+          socket.current?.emit("signalingMessage", { 
             room, 
             message: JSON.stringify({ type: "answer", answer }) 
           });
@@ -244,7 +284,7 @@ const ChatPage: React.FC = () => {
         setIsInCall(true);
       }
     } catch (error) {
-      console.log("Failed to handle offer");
+      console.log("Failed to handle offer:", error);
     }
   };
 
@@ -254,7 +294,7 @@ const ChatPage: React.FC = () => {
         await peerConnectionRef.current.setRemoteDescription(answer);
       }
     } catch (error) {
-      console.log("Failed to handle answer");
+      console.log("Failed to handle answer", error);
     }
   };
 
@@ -270,7 +310,7 @@ const ChatPage: React.FC = () => {
       setShowVideoBlock(false);
       
       if (socket.current && room) {
-        socket.current.emit("signalingMessage", { 
+        socket.current?.emit("signalingMessage", { 
           room, 
           message: JSON.stringify({ type: "hangup" }) 
         });
@@ -358,7 +398,7 @@ const ChatPage: React.FC = () => {
       
       {/* Chat messages */}
       <main className="flex-1 p-4 overflow-y-auto relative" ref={messageContainerRef}>
-        {noOneHere && (
+         { noOneHere && (
           <div className="text-zinc-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2/3 text-center">
             bhagwaan kasam koi nahi hai yaha, ruko shaayad koi aajaye.
           </div>
@@ -369,16 +409,22 @@ const ChatPage: React.FC = () => {
             key={index} 
             className={`flex my-2 ${msg.isSent ? 'justify-end' : 'justify-start'}`}
           >
-            <div className={`${msg.isSent ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-800'} p-3 rounded-lg max-w-xs`}>
+            <div className={`${
+              msg.isSent ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-800'
+            }  py-2 px-8  rounded-lg max-w-md break-words`}>
               <p>{msg.text}</p>
+              <div className={`text-xs mt-1 ${msg.isSent ? 'text-blue-100' : 'text-gray-500'}`}>
+                {msg.isSent ? 'Sent' : 'Received'}
+              </div>
             </div>
           </div>
         ))}
       </main>
       
       {/* Message input */}
-      <form className="bg-white p-4 flex" onSubmit={handleSendMessage}>
+      <form id="chatform" className="bg-white p-4 flex" onSubmit={handleSendMessage}>
         <input 
+          id='messagebox'
           type="text" 
           className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           placeholder="Type a message"
@@ -403,50 +449,3 @@ const ChatPage: React.FC = () => {
 export default ChatPage;
 
 
-
-// import { useEffect } from 'react';
-// import io from 'socket.io-client';
-
-// const App = () => {
-//     useEffect(() => {
-//         // Connect to the socket server with explicit CORS configuration
-//         const socket = io('http://localhost:3000', {
-//             withCredentials: true,
-//             transports: ['polling', 'websocket']  // Try polling first, then websocket
-//         });
-
-//         // On connection to the server
-//         socket.on('connect', () => {
-//             console.log('Connected to server');
-//             // Send a message to the server
-//             socket.emit('clientMessage', 'Hello from React!');
-//         });
-
-//         socket.on('connect_error', (error) => {
-//             console.log('Connection error:', error);
-//         });
-
-//         // Receive message from the server
-//         socket.on('message', (message) => {
-//             console.log('Message from server:', message);
-//         });
-
-//         // Handle disconnection
-//         socket.on('disconnect', () => {
-//             console.log('Disconnected from server');
-//         });
-
-//         // Clean up on component unmount
-//         return () => {
-//             socket.disconnect();
-//         };
-//     }, []);
-
-//     return (
-//         <div>
-//             <h1>Socket.IO in React</h1>
-//         </div>
-//     );
-// };
-
-// export default App;
