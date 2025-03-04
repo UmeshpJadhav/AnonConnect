@@ -66,6 +66,10 @@ io.on("connection", function(socket) {
             waitingusers.splice(index , 1);
           }
     });
+
+    socket.on("typing", ({ room }) => {
+        socket.to(room).emit("userTyping");
+    });
 });
     
 

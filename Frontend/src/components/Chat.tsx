@@ -18,6 +18,7 @@ const ChatPage: React.FC = () => {
   const [showIncomingCall, setShowIncomingCall] = useState<boolean>(false);
   const [showVideoBlock, setShowVideoBlock] = useState<boolean>(false);
   const [noOneHere, setNoOneHere] = useState<boolean>(true);
+  const [isTyping, setIsTyping] = useState<boolean>(false);
   
   const socket = useRef<Socket | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -32,7 +33,7 @@ const ChatPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // Initialize socket connection
+  
     socket.current = io('http://localhost:3000', {
         withCredentials: true,
         transports: ['polling', 'websocket'] 
@@ -40,7 +41,7 @@ const ChatPage: React.FC = () => {
 
     socket.current.emit("joinroom");  
     
-    // Set up event listeners
+   
     socket.current.on("joined", (roomname: string) => {
         document.querySelector(".noOneHere")?.classList.add("hidden");
         setRoom(roomname);
@@ -67,7 +68,11 @@ const ChatPage: React.FC = () => {
     
     socket.current.on("signalingMessage", handleSignalingMessage);
     
-    // Add error listeners
+    socket.current.on("userTyping", () => {
+        setIsTyping(true);
+        setTimeout(() => setIsTyping(false), 3000);
+    });
+    
     socket.current.on("connect_error", (err) => {
       console.log("Connection error:", err.message);
     });
@@ -76,7 +81,7 @@ const ChatPage: React.FC = () => {
       console.log("Disconnected:", reason);
     });
     
-    // Clean up on component unmount
+ 
     return () => {
         if (socket.current) {
             socket.current.disconnect();
@@ -86,7 +91,7 @@ const ChatPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
+   
     if (messageContainerRef.current) {
       messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
     }
@@ -95,24 +100,24 @@ const ChatPage: React.FC = () => {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (messageText.trim() && socket.current && room) {
-      // Create temporary message with pending state
-      const tempId = Date.now(); // Unique identifier for the message
+      
+      const tempId = Date.now(); 
       setMessages(prev => [...prev, { 
         text: messageText, 
         isSent: true,
-        tempId, // Add temporary ID
+        tempId, 
         status: 'pending' 
       }]);
       
       socket.current.emit("message", { 
         room: room, 
         message: messageText,
-        tempId // Send the temp ID with the message
+        tempId 
       });
 
       setMessageText('');
       
-      // Force scroll to bottom after state update
+      
       setTimeout(() => {
         if (messageContainerRef.current) {
           messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
@@ -320,6 +325,13 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageText(e.target.value);
+    if (socket.current && room) {
+        socket.current.emit("typing", { room });
+    }
+  };
+
   return (
     <div className="flex flex-col h-dvh bg-gray-200">
       <Header onVideoCallClick={startVideoCall} />
@@ -421,6 +433,13 @@ const ChatPage: React.FC = () => {
         ))}
       </main>
       
+      {/* Typing indicator */}
+      {isTyping && (
+        <div className="px-4 py-2 text-sm text-gray-500 italic">
+          typing...
+        </div>
+      )}
+      
       {/* Message input */}
       <form id="chatform" className="bg-white p-4 flex" onSubmit={handleSendMessage}>
         <input 
@@ -429,7 +448,7 @@ const ChatPage: React.FC = () => {
           className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           placeholder="Type a message"
           value={messageText}
-          onChange={(e) => setMessageText(e.target.value)}
+          onChange={handleTyping}
         />
         <button 
           type="submit"
