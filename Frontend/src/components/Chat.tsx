@@ -13,8 +13,8 @@ const ChatPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState<string>('');
   const [room, setRoom] = useState<string>('');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isInCall, setIsInCall] = useState<boolean>(false);
+   
+  const [, setIsInCall] = useState<boolean>(false);
   const [showIncomingCall, setShowIncomingCall] = useState<boolean>(false);
   const [showVideoBlock, setShowVideoBlock] = useState<boolean>(false);
   const [noOneHere, setNoOneHere] = useState<boolean>(true);
@@ -125,9 +125,8 @@ const ChatPage: React.FC = () => {
       }, 0);
     }
   };
-
   const receiveMessage = (message: string, receivedTempId?: number) => {
-    setMessages(prev => {
+    setMessages(prev   =>   {
       // If we have a temp ID, replace the pending message
       if (receivedTempId) {
         return prev.map(msg => 

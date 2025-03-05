@@ -33,7 +33,7 @@ io.on("connection", function(socket) {
      socket.on("joinroom", function(){
        //idharr waiting user ka logic aayega matlab agar waiting user me zero se jyada  hai matalab koi to hai nahi to koin nahi matlab zero hai to hum khudko daal dege matlab socket ko push kardenege
        if(waitingusers.length > 0){
-   //idhar shift user karke waiting users se partner mai daal denege to hume partner mil jayega jisse hamri batchit hogi
+   //idhar shift user karke waiting users se partner mai daal denge to hume partner mil jayega jisse hamri batchit hogi
       let partner = waitingusers.shift();
       const roomname = `${socket.id}-${partner.id}`;
 
