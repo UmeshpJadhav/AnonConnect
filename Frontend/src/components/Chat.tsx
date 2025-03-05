@@ -2,13 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Socket, io } from 'socket.io-client';
 import Header from './Header';
 
-interface Message {
-  text: string;
-  isSent: boolean;
-  tempId?: number;
-  status: 'pending' | 'delivered';
-}
-
 const ChatPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState<string>('');
@@ -88,7 +81,15 @@ const ChatPage: React.FC = () => {
         }
         hangup();
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [] );
+
+  interface Message {
+    text: string;
+    isSent: boolean;
+    tempId?: number;
+    status: 'pending' | 'delivered';
+  }
 
   useEffect(() => {
    
@@ -126,16 +127,15 @@ const ChatPage: React.FC = () => {
     }
   };
   const receiveMessage = (message: string, receivedTempId?: number) => {
-    setMessages(prev   =>   {
-      // If we have a temp ID, replace the pending message
+    setMessages(prev => {
       if (receivedTempId) {
         return prev.map(msg => 
           msg.tempId === receivedTempId 
-            ? { ...msg, status: 'delivered' } 
+            ? { ...msg, status: 'delivered' as const } 
             : msg
-        ).concat({ text: message, isSent: false });
+        ).concat({ text: message, isSent: false, status: 'delivered' as const });
       }
-      return [...prev, { text: message, isSent: false }];
+      return [...prev, { text: message, isSent: false, status: 'delivered' as const }];
     });
   };
 
