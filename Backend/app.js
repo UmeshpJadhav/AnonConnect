@@ -53,7 +53,8 @@ io.on("connection", function(socket) {
 
      socket.on("message", function(data, tempId){
        //samne vale ko messsage bhejn hai abb 
-       socket.broadcast.to(data.room).emit("message" , data.message);   
+       socket.broadcast.to(data.room).emit("message" , data.message); 
+
        //socket.emit('message', data.message, tempId);
      })
            
@@ -70,6 +71,12 @@ io.on("connection", function(socket) {
     socket.on("typing", ({ room }) => {
         socket.to(room).emit("userTyping");
     });
+  
+    // Server-side (Node.js)
+      socket.on("startVideoCall", ({ room }) => {
+      socket.to(room).emit("incomingCall");
+});
+
 });
     
 
