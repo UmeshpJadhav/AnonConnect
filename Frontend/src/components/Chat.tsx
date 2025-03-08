@@ -21,12 +21,13 @@ const ChatPage: React.FC = () => {
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Initialize the socket connection with only WebSocket transport.
+    // Initialize the socket connection using only WebSocket.
     socket.current = io('https://omeglebackend-5n8t.onrender.com', {
       withCredentials: true,
       transports: ['websocket']
     });
 
+    // Register event listeners.
     const socketEvents = [
       { event: 'joined', handler: handleRoomJoined },
       { event: 'message', handler: handleIncomingMessage },
@@ -70,9 +71,13 @@ const ChatPage: React.FC = () => {
     setShowIncomingCall(true);
   };
 
+  // This event is expected to fire on the caller side.
   const handleCallAccepted = () => {
-    console.log('Call accepted event received');
-    //window.location.href = 'https://webrtc-leg5.onrender.com';
+    console.log('Call accepted event received on caller side');
+    // Delay to ensure the event is processed before redirection.
+    setTimeout(() => {
+      window.location.href = 'https://webrtc-leg5.onrender.com';
+    }, 100);
   };
 
   const handleUserTyping = () => {
@@ -132,7 +137,7 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // Caller: Initiate video call request
+  // Caller: Initiate a video call request.
   const startVideoCall = () => {
     if (noOneHere) {
       alert('Please wait until another user joins the chat to start a video call.');
@@ -144,25 +149,23 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // Callee: Accept the incoming call
+  // Callee: Accept the incoming call.
   const acceptCall = (e: React.MouseEvent) => {
     e.preventDefault();
-    console.log('Accepting call...');
+    console.log('Accepting call on callee side...');
     setShowIncomingCall(false);
     if (socket.current && room) {
       socket.current.emit('acceptCall', { room });
     }
-    // Delay redirection to ensure the socket event is processed
+    // Callee redirection.
     setTimeout(() => {
-    //  window.location.assign('https://webrtc-leg5.onrender.com');
-    }, 100); // adjust delay if needed
+      window.location.assign('https://webrtc-leg5.onrender.com');
+    }, 100);
   };
-  
-  
-  
-  // Callee: Reject the incoming call
+
+  // Callee: Reject the incoming call.
   const rejectCall = () => {
-    console.log('Rejecting call...');
+    console.log('Rejecting call on callee side...');
     setShowIncomingCall(false);
     if (socket.current && room) {
       socket.current.emit('rejectCall', { room });
@@ -197,35 +200,18 @@ const ChatPage: React.FC = () => {
       )}
 
       {/* Chat messages */}
-      <main
-        className="flex-1 p-4 overflow-y-auto relative"
-        ref={messageContainerRef}
-      >
+      <main className="flex-1 p-4 overflow-y-auto relative" ref={messageContainerRef}>
         {noOneHere && (
           <div className="text-zinc-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2/3 text-center">
             No one is here right now. Wait a moment, someone might join soon.
           </div>
         )}
-
         {messages.map((msg) => (
-          <div
-            key={msg.tempId || msg.text}
-            className={`flex my-2 ${msg.isSent ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`${
-                msg.isSent ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-800'
-              } py-2 px-4 rounded-lg max-w-md break-words relative`}
-            >
+          <div key={msg.tempId || msg.text} className={`flex my-2 ${msg.isSent ? 'justify-end' : 'justify-start'}`}>
+            <div className={`${msg.isSent ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-800'} py-2 px-4 rounded-lg max-w-md break-words relative`}>
               <p>{msg.text}</p>
-              <div
-                className={`text-xs mt-1 ${msg.isSent ? 'text-blue-100' : 'text-gray-500'}`}
-              >
-                {msg.status === 'pending'
-                  ? 'Sending...'
-                  : msg.isSent
-                  ? 'Sent'
-                  : 'Received'}
+              <div className={`text-xs mt-1 ${msg.isSent ? 'text-blue-100' : 'text-gray-500'}`}>
+                {msg.status === 'pending' ? 'Sending...' : msg.isSent ? 'Sent' : 'Received'}
               </div>
             </div>
           </div>
@@ -240,11 +226,7 @@ const ChatPage: React.FC = () => {
       )}
 
       {/* Message input */}
-      <form
-        id="chatform"
-        className="bg-white p-4 flex shadow-md"
-        onSubmit={handleSendMessage}
-      >
+      <form id="chatform" className="bg-white p-4 flex shadow-md" onSubmit={handleSendMessage}>
         <input
           id="messagebox"
           type="text"
@@ -253,10 +235,7 @@ const ChatPage: React.FC = () => {
           value={messageText}
           onChange={handleTyping}
         />
-        <button
-          type="submit"
-          className="ml-2 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition"
-        >
+        <button type="submit" className="ml-2 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition">
           Send
         </button>
       </form>
