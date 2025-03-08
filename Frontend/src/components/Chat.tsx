@@ -71,7 +71,7 @@ const ChatPage: React.FC = () => {
 
   const handleCallAccepted = () => {
     console.log('Call accepted event received');
-    window.location.href = 'https://webrtc-leg5.onrender.com';
+    //window.location.href = 'https://webrtc-leg5.onrender.com';
   };
 
   const handleUserTyping = () => {
@@ -153,7 +153,7 @@ const ChatPage: React.FC = () => {
     }
     // Delay redirection to ensure the socket event is processed
     setTimeout(() => {
-      window.location.assign('https://webrtc-leg5.onrender.com');
+    //  window.location.assign('https://webrtc-leg5.onrender.com');
     }, 100); // adjust delay if needed
   };
   
