@@ -151,11 +151,12 @@ const ChatPage: React.FC = () => {
     if (socket.current && room) {
       socket.current.emit('acceptCall', { room });
     }
-    // Delay redirection to allow the socket event to be processed
+    // Delay redirection to ensure the event is sent
     setTimeout(() => {
       window.location.assign('https://webrtc-leg5.onrender.com');
-    }, 100); // Adjust delay if necessary
+    }, 100);
   };
+  
   
   // Callee: Reject the incoming call
   const rejectCall = () => {
