@@ -21,9 +21,10 @@ const ChatPage: React.FC = () => {
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Initialize the socket connection with only WebSocket transport.
     socket.current = io('https://omeglebackend-5n8t.onrender.com', {
       withCredentials: true,
-      transports: ['polling', 'websocket']
+      transports: ['websocket']
     });
 
     const socketEvents = [
