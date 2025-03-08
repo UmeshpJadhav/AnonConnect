@@ -51,12 +51,28 @@ io.on("connection", function(socket) {
      });
 
 
-     socket.on("message", function(data, tempId){
-       //samne vale ko messsage bhejn hai abb 
-       socket.broadcast.to(data.room).emit("message" , data.message); 
-
-       //socket.emit('message', data.message, tempId);
-     })
+     socket.on('startVideoCall', (data) => {
+      const { room } = data;
+      console.log(`startVideoCall event from ${socket.id} for room ${room}`);
+      // Send an incoming call event to everyone in the room except the sender.
+      socket.to(room).emit('incomingCall');
+    });
+  
+    // When the callee accepts the call.
+    socket.on('acceptCall', (data) => {
+      const { room } = data;
+      console.log(`acceptCall event from ${socket.id} for room ${room}`);
+      // Notify the other participant in the room that the call was accepted.
+      socket.to(room).emit('callAccepted');
+    });
+  
+    // When the callee rejects the call.
+    socket.on('rejectCall', (data) => {
+      const { room } = data;
+      console.log(`rejectCall event from ${socket.id} for room ${room}`);
+      // Notify the other participant that the call was rejected.
+      socket.to(room).emit('callRejected');
+    });
            
      socket.on("disconnect" , function(){
         let index =  waitingusers.findIndex(
@@ -72,9 +88,17 @@ io.on("connection", function(socket) {
         socket.to(room).emit("userTyping");
     });
   
-    // Server-side (Node.js)
+   
       socket.on("startVideoCall", ({ room }) => {
-      socket.to(room).emit("incomingCall");
+      socket.broadcast.to(room).emit("incomingCall");
+
+      socket.on("acceptCall", ({ room }) => {
+        socket.broadcast.to(room).emit("callAccepted")
+    });
+
+    socket.on("rejectCall", ({ room }) => {
+      socket.to(room).emit("callRejected");
+    });
 });
 
 });
